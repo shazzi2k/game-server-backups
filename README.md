@@ -63,8 +63,8 @@ Example:
 ```bash
 BACKUP_SOURCE="/srv/data/games /srv/data/windows-saves"
 BACKUP_DEST="/srv/backups"
-RETENTION_DAYS_LOCAL=3
-RETENTION_DAYS_CLOUD=7
+RETENTION_DAYS_LOCAL=7
+RETENTION_DAYS_CLOUD=14
 ```
 
 ---
