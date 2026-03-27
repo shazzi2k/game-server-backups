@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+source /etc/environment
+
 WEBHOOK="${DISCORD_WEBHOOK}"
 
 send_message() {
