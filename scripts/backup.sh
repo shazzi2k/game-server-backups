@@ -1,8 +1,18 @@
 #!/bin/bash
 set -e
 
+WEBHOOK="${DISCORD_WEBHOOK}"
+
+send_message() {
+  curl -s -H "Content-Type: application/json" \
+  -d "{\"content\": \"[$(date '+%Y-%m-%d %H:%M:%S')] $1\"}" \
+  "$WEBHOOK" > /dev/null
+}
+
 # Load config
-source /srv/data/game-server-backup/config/backup.conf
+source /srv/data/stacks/game-server-backups/config/backup.conf
+
+send_message "🟡 Backup starting..."
 
 # Stop active containers
 echo "Stopping running containers..."
@@ -17,7 +27,7 @@ fi
 
 # Validate config
 if [ -z "$BACKUP_SOURCE" ] || [ -z "$BACKUP_DEST" ]; then
-  echo "Error: Config not loaded properly"
+  send_message "❌ Backup failed: config not loaded"
   exit 1
 fi
 
@@ -35,20 +45,28 @@ tar -czf "$BACKUP_FILE" \
 --exclude='*/temp/*' \
 "$BACKUP_SOURCE"
 
-# Delete old backups (local)
-find "$BACKUP_DEST" -type f -name "*.tar.gz" -mtime +${RETENTION_DAYS_LOCAL} -delete
+send_message "🟢 Backup created: $BACKUP_FILE"
+
+# Retention (local - keep last 2)
+ls -tp "$BACKUP_DEST"/*.tar.gz | grep -v '/$' | tail -n +3 | xargs -r rm --
+
+send_message "🧹 Old local backups cleaned"
 
 # Upload to Google Drive
 echo "Uploading backup to Google Drive..."
 rclone copy "$BACKUP_FILE" gdrive:game-server-backups
 echo "Upload complete"
 
+send_message "☁️ Backup uploaded to Google Drive"
+
 # Cleanup old backups in Google Drive
 echo "Cleaning old backups from Google Drive..."
 rclone delete gdrive:game-server-backups --min-age "${RETENTION_DAYS_CLOUD}d"
 echo "Cloud cleanup complete"
 
-#Restarting containers
+send_message "🧹 Cloud backups cleaned"
+
+# Restarting containers
 echo "Restarting containers..."
 
 if [ -n "$RUNNING_CONTAINERS" ]; then
@@ -56,3 +74,5 @@ if [ -n "$RUNNING_CONTAINERS" ]; then
 else
   echo "Nothing to restart"
 fi
+
+send_message "🔵 Backup process complete. Servers back online."
